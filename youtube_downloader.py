@@ -120,7 +120,7 @@ def download_audio(url, output_folder, on_success=None, on_error=None, cookiefil
             temp_dir = tempfile.mkdtemp(prefix='spotify_dl_')
 
             ydl_opts = {
-                'format': 'bestaudio/best',
+                'format': 'bestaudio/best/b/worstaudio/worst',
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'mp3',
