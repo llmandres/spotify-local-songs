@@ -104,7 +104,16 @@ def _write_spotify_tags(filepath, title, artist, cover_jpeg_bytes=None):
     except Exception as e:
         print(f"Warning: could not write Spotify tags: {e}")
 
-def download_audio(url, output_folder, on_success=None, on_error=None):
+
+def _cookie_options(cookiefile=None, cookies_browser=None):
+    if cookiefile and os.path.isfile(cookiefile):
+        return {"cookiefile": cookiefile}
+    if cookies_browser:
+        return {"cookiesfrombrowser": (cookies_browser,)}
+    return {}
+
+
+def download_audio(url, output_folder, on_success=None, on_error=None, cookiefile=None, cookies_browser=None):
     def run_download():
         temp_dir = None
         try:
@@ -121,7 +130,9 @@ def download_audio(url, output_folder, on_success=None, on_error=None):
                 'quiet': True,
                 'no_warnings': True,
                 'writethumbnail': False,
+                'noplaylist': True,
             }
+            ydl_opts.update(_cookie_options(cookiefile, cookies_browser))
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info_dict = ydl.extract_info(url, download=True)

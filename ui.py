@@ -21,7 +21,7 @@ class SpotifyLocalFileManager(ctk.CTk):
         super().__init__()
 
         self.title("Spotify Local Song")
-        self.geometry("1000x650")
+        self.geometry("1000x700")
         self.minsize(800, 500)
         self.configure(fg_color=SPOTIFY_BG)
 
@@ -41,7 +41,7 @@ class SpotifyLocalFileManager(ctk.CTk):
             self._load_folder(self.current_folder)
 
     def _build_ui(self):
-        self.top_bar = ctk.CTkFrame(self, fg_color=SPOTIFY_PANEL, corner_radius=0, height=100)
+        self.top_bar = ctk.CTkFrame(self, fg_color=SPOTIFY_PANEL, corner_radius=0, height=138)
         self.top_bar.grid(row=0, column=0, columnspan=2, sticky="ew")
         self.top_bar.grid_propagate(False)
 
@@ -102,6 +102,63 @@ class SpotifyLocalFileManager(ctk.CTk):
         )
         self.lbl_status.pack(side="left", padx=10)
 
+        self.top_row_3 = ctk.CTkFrame(self.top_bar, fg_color="transparent")
+        self.top_row_3.pack(fill="x", padx=10, pady=(0, 10))
+
+        ctk.CTkLabel(
+            self.top_row_3, text="YouTube cookies (bot fix):",
+            text_color=SPOTIFY_SUBTEXT, font=("Helvetica", 11)
+        ).pack(side="left", padx=(0, 6))
+
+        _yt_vals = ["Chrome", "Edge", "Firefox", "Brave", "None"]
+        _raw_b = self.config.get("yt_cookie_browser")
+        if _raw_b is None:
+            _saved_b = "chrome"
+        elif _raw_b == "":
+            _saved_b = None
+        else:
+            _saved_b = (_raw_b or "").lower()
+        if _saved_b and _saved_b not in ("chrome", "edge", "firefox", "brave"):
+            _saved_b = "chrome"
+        _initial_combo = "None" if _saved_b is None else _saved_b.capitalize()
+
+        self.combo_yt_cookies = ctk.CTkComboBox(
+            self.top_row_3,
+            values=_yt_vals,
+            width=110,
+            fg_color=SPOTIFY_BG,
+            border_width=1,
+            border_color=SPOTIFY_HOVER,
+            text_color=SPOTIFY_TEXT,
+            button_color=SPOTIFY_HOVER,
+            button_hover_color=SPOTIFY_PANEL,
+            command=self._persist_yt_cookie_browser,
+        )
+        self.combo_yt_cookies.set(_initial_combo)
+        self.combo_yt_cookies.pack(side="left", padx=(0, 8))
+
+        self.btn_yt_pick_cookies = ctk.CTkButton(
+            self.top_row_3, text="cookies.txt…",
+            fg_color="transparent", border_width=1, border_color=SPOTIFY_SUBTEXT,
+            text_color=SPOTIFY_TEXT, hover_color=SPOTIFY_HOVER,
+            command=self._pick_yt_cookies_file, width=100, state="disabled"
+        )
+        self.btn_yt_pick_cookies.pack(side="left", padx=(0, 6))
+
+        self.btn_yt_clear_cookies = ctk.CTkButton(
+            self.top_row_3, text="Clear file",
+            fg_color="transparent", border_width=1, border_color=SPOTIFY_SUBTEXT,
+            text_color=SPOTIFY_SUBTEXT, hover_color=SPOTIFY_HOVER,
+            command=self._clear_yt_cookies_file, width=72, state="disabled"
+        )
+        self.btn_yt_clear_cookies.pack(side="left", padx=(0, 8))
+
+        self.lbl_yt_cookie_file = ctk.CTkLabel(
+            self.top_row_3, text="", text_color=SPOTIFY_SUBTEXT, font=("Helvetica", 11)
+        )
+        self.lbl_yt_cookie_file.pack(side="left", padx=(0, 10))
+        self._refresh_yt_cookie_file_label()
+
         self.sidebar = ctk.CTkScrollableFrame(self, fg_color=SPOTIFY_BG, width=250, corner_radius=0)
         self.sidebar.grid(row=1, column=0, sticky="nsew")
 
@@ -157,6 +214,37 @@ class SpotifyLocalFileManager(ctk.CTk):
         ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(250, 250))
         self.lbl_cover.configure(image=ctk_img, text="")
 
+    def _refresh_yt_cookie_file_label(self):
+        p = (self.config.get("yt_cookie_file") or "").strip()
+        if p and os.path.isfile(p):
+            self.lbl_yt_cookie_file.configure(text=os.path.basename(p))
+        elif p:
+            self.lbl_yt_cookie_file.configure(text="(missing cookies.txt)")
+        else:
+            self.lbl_yt_cookie_file.configure(text="")
+
+    def _persist_yt_cookie_browser(self, choice):
+        if not choice or choice == "None":
+            self.config["yt_cookie_browser"] = ""
+        else:
+            self.config["yt_cookie_browser"] = choice.lower()
+        save_config(self.config)
+
+    def _pick_yt_cookies_file(self):
+        path = filedialog.askopenfilename(
+            title="Netscape format cookies.txt",
+            filetypes=[("cookies.txt", "*.txt"), ("All files", "*.*")]
+        )
+        if path:
+            self.config["yt_cookie_file"] = path
+            save_config(self.config)
+            self._refresh_yt_cookie_file_label()
+
+    def _clear_yt_cookies_file(self):
+        self.config["yt_cookie_file"] = ""
+        save_config(self.config)
+        self._refresh_yt_cookie_file_label()
+
     def _select_folder(self):
         folder = filedialog.askdirectory(title="Select Music Folder")
         if folder:
@@ -171,6 +259,9 @@ class SpotifyLocalFileManager(ctk.CTk):
         self.btn_add_local.configure(state="normal")
         self.btn_refresh.configure(state="normal")
         self.btn_download_yt.configure(state="normal")
+        self.combo_yt_cookies.configure(state="normal")
+        self.btn_yt_pick_cookies.configure(state="normal")
+        self.btn_yt_clear_cookies.configure(state="normal")
 
         self.mp3_files = get_mp3_files(folder)
         self._refresh_song_list()
@@ -321,8 +412,19 @@ class SpotifyLocalFileManager(ctk.CTk):
         if not url:
             return
 
+        cf_path = (self.config.get("yt_cookie_file") or "").strip()
+        cookiefile = cf_path if cf_path and os.path.isfile(cf_path) else None
+        if cookiefile:
+            cookies_browser = None
+        else:
+            sel = self.combo_yt_cookies.get()
+            cookies_browser = None if sel == "None" else sel.lower()
+
         self.btn_download_yt.configure(state="disabled")
         self.entry_yt_url.configure(state="disabled")
+        self.combo_yt_cookies.configure(state="disabled")
+        self.btn_yt_pick_cookies.configure(state="disabled")
+        self.btn_yt_clear_cookies.configure(state="disabled")
         self.lbl_status.configure(text="Downloading...", text_color=SPOTIFY_TEXT)
 
         def on_success(title):
@@ -331,12 +433,18 @@ class SpotifyLocalFileManager(ctk.CTk):
         def on_error(err_msg):
             self.after(0, self._on_download_error, err_msg)
 
-        download_audio(url, self.current_folder, on_success, on_error)
+        download_audio(
+            url, self.current_folder, on_success, on_error,
+            cookiefile=cookiefile, cookies_browser=cookies_browser
+        )
 
     def _on_download_complete(self, title):
         self.entry_yt_url.configure(state="normal")
         self.entry_yt_url.delete(0, "end")
         self.btn_download_yt.configure(state="normal")
+        self.combo_yt_cookies.configure(state="normal")
+        self.btn_yt_pick_cookies.configure(state="normal")
+        self.btn_yt_clear_cookies.configure(state="normal")
         self.lbl_status.configure(text=f"Downloaded: {title}", text_color=SPOTIFY_GREEN)
 
         self.mp3_files = get_mp3_files(self.current_folder)
@@ -345,5 +453,8 @@ class SpotifyLocalFileManager(ctk.CTk):
     def _on_download_error(self, err_msg):
         self.entry_yt_url.configure(state="normal")
         self.btn_download_yt.configure(state="normal")
+        self.combo_yt_cookies.configure(state="normal")
+        self.btn_yt_pick_cookies.configure(state="normal")
+        self.btn_yt_clear_cookies.configure(state="normal")
         self.lbl_status.configure(text="Error downloading video", text_color="red")
         messagebox.showerror("Download Error", f"Failed to download from YouTube:\n{err_msg}")

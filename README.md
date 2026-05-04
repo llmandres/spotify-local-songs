@@ -41,9 +41,9 @@ Release zip contains `dist\SpotifyLocalSong\` — run `SpotifyLocalSong.exe` and
 2. **Pick a track** in the sidebar to edit **Title / Artist / Album** and **cover**.
 3. **Save** — Writes **ID3v2.3** tags (what Spotify expects for local files). If the title is valid as a filename, the file may be renamed to match.
 4. **Add MP3s** — Use **Add Local MP3** or copy files into that folder yourself.
-5. **YouTube URL** — Paste a link and **Download**. The app downloads, re-encodes for compatibility, and tags the file.
+5. **YouTube URL** — Paste a link and **Download**. The app only grabs **one** video (not a full playlist). **YouTube often blocks bots:** use **YouTube cookies (bot fix)** — pick the browser where you are signed into YouTube (Chrome, Edge, etc.), or a **`cookies.txt`** file (Netscape format, see [yt-dlp wiki](https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies)). If download still fails, close the browser completely and try again, or use `cookies.txt`.
 
-**Playlist warning:** If you paste a **playlist** URL, the downloader may fetch the **entire playlist**, not a single video. Prefer a single-video URL when you only want one track.
+**Playlist URLs:** Only the **first / linked video** is downloaded (`noplaylist`); use a direct watch URL for a specific track if in doubt.
 
 ---
 
